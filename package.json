@@ -1,0 +1,23 @@
+{
+  "name": "deproto",
+  "version": "0.1.0",
+  "description": "",
+  "main": "deproto.js",
+  "dependencies": {
+    "async": "~0.2.10"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/xingrz/deproto.git"
+  },
+  "author": "XiNGRZ <chenxingyu92@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xingrz/deproto/issues"
+  },
+  "homepage": "https://github.com/xingrz/deproto"
+}

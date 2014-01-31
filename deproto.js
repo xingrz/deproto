@@ -1,16 +1,45 @@
-var dir = './Proto'
-  , file = 'Proto'
-
 var fs = require('fs')
-  , join = require('path').join
+  , pt = require('path')
   , format = require('util').format
+  , async = require('async')
 
 var klass = require('./parsers/class')
   , field = require('./parsers/field')
   , method = require('./parsers/method')
   , statement = require('./parsers/statement')
 
-readFile(join(dir, file + '$Command$CommandType.smali'), function (err, type, defs) {
+var filepath = process.argv.pop()
+  , basename = pt.basename(filepath)
+
+if ('.smali' !== pt.extname(filepath)) {
+  return console.log('Accepts .smali only')
+}
+
+if (-1 !== basename.indexOf('$')) {
+  return console.log('Does not accept member class')
+}
+
+readPackage(filepath, function (err, name, pkg) {
+  if (err) {
+    return console.error(err)
+  }
+
+  fs.readdir(pt.pathname(filepath), function (err, list) {
+    if (err) {
+      return console.error(err)
+    }
+
+    list = list.filter(function (i) {
+      return i.length > basename.length
+          && basename === i.substr(0, basename.length)
+          && '.smali' === pt.extname(i)
+    })
+
+    async.map()
+  })
+})
+
+readFile(pt.join(dir, file + '$Command$CommandType.smali'), function (err, type, defs) {
   if ('message' === type) {
     var result = ''
     result += 'message XXXXX {\n'
@@ -33,6 +62,17 @@ readFile(join(dir, file + '$Command$CommandType.smali'), function (err, type, de
     console.log(result)
   }
 })
+
+function readPackage (file, callback) {
+  fs.createReadStream(filepath)
+    .once('error', callback)
+    .pipe(klass())
+    .once('error', callback)
+    .once('class', function (type, cls) {
+      cls = cls.split('/')
+      callback(null, cls.pop().toLowerCase(), cls.join('.'))
+    })
+}
 
 function readFile (path, callback) {
   fs.createReadStream(path)

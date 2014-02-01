@@ -9,7 +9,8 @@ var klass = require('./parsers/class')
   , statement = require('./parsers/statement')
 
 var filepath = process.argv.pop()
-  , basename = pt.basename(filepath)
+  , basename = pt.basename(filepath, '.smali')
+  , dirname = pt.dirname(filepath)
 
 if ('.smali' !== pt.extname(filepath)) {
   return console.log('Accepts .smali only')
@@ -19,52 +20,68 @@ if (-1 !== basename.indexOf('$')) {
   return console.log('Does not accept member class')
 }
 
+var out = process.stdout
+
 readPackage(filepath, function (err, name, pkg) {
   if (err) {
     return console.error(err)
   }
 
-  fs.readdir(pt.pathname(filepath), function (err, list) {
+  out.write(format('package %s;\n', pkg))
+  out.write('\n')
+
+  readMembers(filepath, function (err, list) {
     if (err) {
       return console.error(err)
     }
 
-    list = list.filter(function (i) {
-      return i.length > basename.length
-          && basename === i.substr(0, basename.length)
-          && '.smali' === pt.extname(i)
-    })
+    var message = null
 
-    async.map()
+    async.eachSeries(list, function (cls, next) {
+      var path = pt.join(dirname, basename + '$' + cls + '.smali')
+      readFile(path, function (err, type, defs) {
+        if (err) {
+          return next(err)
+        }
+
+        cls = cls.split('$')
+
+        var name = cls.join('.')
+
+        if ('message' === type) {
+          out.write(format('message %s {\n', name))
+          defs.forEach(function (def) {
+            var type = def.type.split('.')
+            if (name === type.shift()) {
+              def.type = type.join('.')
+            }
+            out.write(format('  %s %s %s = %d;\n', def.key, def.type, def.field, def.tag))
+          })
+          out.write('}\n')
+        }
+
+        if ('enum' === type) {
+          out.write(format('enum %s {\n', name))
+          defs.forEach(function (def) {
+            out.write(format('  %s = %d;\n', def.key, def.value))
+          })
+          out.write('}\n')
+        }
+
+        out.write('\n')
+
+        next()
+      })
+    }, function (err) {
+      if (err) {
+        return console.error(err)
+      }
+    })
   })
 })
 
-readFile(pt.join(dir, file + '$Command$CommandType.smali'), function (err, type, defs) {
-  if ('message' === type) {
-    var result = ''
-    result += 'message XXXXX {\n'
-    defs.forEach(function (def) {
-      result += format('  %s %s %s = %d;\n', def.key, def.type, def.field, def.tag)
-    })
-    result += '}\n'
-    console.log(result)
-  }
-  else if ('enum' === type) {
-    var result = ''
-    result += 'enum XXXXX {\n'
-    defs.sort(function (x, y) {
-          return x.value > y.value ? 1 : -1
-        })
-        .forEach(function (def) {
-          result += format('  %s = %d;\n', def.key, def.value)
-        })
-    result += '}\n'
-    console.log(result)
-  }
-})
-
 function readPackage (file, callback) {
-  fs.createReadStream(filepath)
+  fs.createReadStream(file)
     .once('error', callback)
     .pipe(klass())
     .once('error', callback)
@@ -72,6 +89,35 @@ function readPackage (file, callback) {
       cls = cls.split('/')
       callback(null, cls.pop().toLowerCase(), cls.join('.'))
     })
+}
+
+function readMembers (file, callback) {
+  var basename = pt.basename(file, '.smali')
+
+  fs.readdir(pt.dirname(file), function (err, list) {
+    if (err) {
+      return callback(err)
+    }
+
+    list = list
+    .filter(function (i) {
+      return '.smali' === pt.extname(i)
+    })
+    .map(function (i) {
+      return pt.basename(i, '.smali')
+    })
+    .filter(function (i) {
+      return i !== basename
+          && i.length + 1 > basename.length
+          && basename + '$' === i.substr(0, basename.length + 1)
+    })
+    .map(function (i) {
+      return i.substr(basename.length + 1)
+    })
+    .sort()
+
+    callback(null, list)
+  })
 }
 
 function readFile (path, callback) {
@@ -115,6 +161,8 @@ function streamEnum(stream, callback) {
           defs.push(def)
         })
         .once('end', function () {
-          callback(null, 'enum', defs)
+          callback(null, 'enum', defs.sort(function (x, y) {
+            return x.value > y.value ? 1 : -1
+          }))
         })
 }

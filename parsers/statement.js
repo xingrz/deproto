@@ -43,7 +43,7 @@ CommandParser.prototype._transform = function (line, encoding, done) {
   if (startsWith('iget', line)) {
     var getting = line.substr(line.indexOf('->') + 2).split(':')
       , type = getting[1]
-    
+
 
     if (startsWith('[', type)) {
       this._def.key = 'repeated'
@@ -62,17 +62,19 @@ CommandParser.prototype._transform = function (line, encoding, done) {
 
   if (startsWith('invoke-virtual ', line)) {
     var invoking = line.match(/\-\>write([^\(]+)/)
+    if (invoking) {
+      if ('Message' !== invoking[1]) {
+        this._def.type = invoking[1].toLowerCase()
+      }
 
-    if ('Message' !== invoking[1]) {
-      this._def.type = invoking[1].toLowerCase()
+      if (!this._def.key) {
+        this._def.key = 'required'
+      }
+
+      this.push(this._def)
+      this._reset()
     }
 
-    if (!this._def.key) {
-      this._def.key = 'required'
-    }
-
-    this.push(this._def)
-    this._reset()
     return done()
   }
 

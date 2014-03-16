@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var fs = require('fs')
   , pt = require('path')
   , format = require('util').format

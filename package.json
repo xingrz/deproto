@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "",
   "main": "deproto.js",
+  "bin": {
+    "deproto": "deproto.js"
+  },
   "dependencies": {
     "async": "~0.2.10"
   },

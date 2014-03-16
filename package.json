@@ -4,7 +4,7 @@
   "description": "",
   "main": "deproto.js",
   "bin": {
-    "deproto": "deproto.js"
+    "protod-nano": "protod-nano.js"
   },
   "dependencies": {
     "async": "~0.2.10"

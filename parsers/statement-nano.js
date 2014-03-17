@@ -44,7 +44,6 @@ CommandParser.prototype._transform = function (line, encoding, done) {
     var getting = line.substr(line.indexOf('->') + 2).split(':')
       , type = getting[1]
 
-
     if (startsWith('[', type)) {
       this._def.key = 'repeated'
       type = type.substr(1)

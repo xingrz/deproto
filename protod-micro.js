@@ -8,7 +8,7 @@ var fs = require('fs')
 var klass = require('./parsers/class')
   , field = require('./parsers/field')
   , method = require('./parsers/method')
-  , statement = require('./parsers/statement-nano')
+  , statement = require('./parsers/statement-micro')
 
 var filepath = process.argv.pop()
   , basename = pt.basename(filepath, '.smali')
@@ -40,8 +40,8 @@ readPackage(filepath, function (err, name, pkg) {
     var message = null
 
     async.eachSeries(list, function (cls, next) {
-      var path = pt.join(dirname, basename + '$' + cls + '.smali')
-      readFile(path, function (err, type, defs) {
+      readFile(pt.join(dirname, basename + '$' + cls + '.smali'),
+      function (err, type, defs) {
         if (err) {
           return next(err)
         }

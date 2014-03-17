@@ -4,6 +4,7 @@
   "description": "",
   "main": "deproto.js",
   "bin": {
+    "protod-micro": "protod-micro.js",
     "protod-nano": "protod-nano.js"
   },
   "dependencies": {

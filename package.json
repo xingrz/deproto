@@ -4,11 +4,13 @@
   "description": "",
   "main": "deproto.js",
   "bin": {
+    "protod": "protod.js",
     "protod-micro": "protod-micro.js",
     "protod-nano": "protod-nano.js"
   },
   "dependencies": {
-    "async": "~0.2.10"
+    "async": "~0.2.10",
+    "lodash": "~2.4.1"
   },
   "devDependencies": {},
   "scripts": {

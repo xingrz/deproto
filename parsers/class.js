@@ -11,19 +11,22 @@ var Transform = require('stream').Transform
 module.exports = ClassParser
 inherits(ClassParser, Transform)
 
-function ClassParser (options) {
+function ClassParser (callback) {
   if (!(this instanceof ClassParser)) {
-    return new ClassParser(options)
+    return new ClassParser(callback)
   }
 
-  Transform.call(this, options)
+  Transform.call(this)
+
+  if ('function' === typeof callback) {
+    this.once('class', callback)
+  }
 
   this._writableState.objectMode = false
   this._readableState.objectMode = true
 
   this._buffer = ''
   this._decoder = new StringDecoder('utf8')
-  this._parseClass = true
 }
 
 ClassParser.prototype._transform = function (chunk, encoding, done) {
@@ -35,19 +38,17 @@ ClassParser.prototype._transform = function (chunk, encoding, done) {
   self._buffer = lines.pop()
 
   lines.forEach(function (line) {
-    if (self._parseClass && '.class ' === line.substr(0, 7)) {
-      var cls = line.split(' ').pop()
-      cls = cls.substring(1, cls.length - 1)
+    if (line) {
+      if (!self.super) {
+        var match = line.match(/^\.super L(.+)\;$/)
+        if (match) {
+          self.super = match[1].replace(/\//g, '.')
+          self.emit('class', self.super)
+        }
+      }
 
-      var type = ~line.indexOf('interface abstract')
-               ? 'enum'
-               : 'message'
-
-      self.emit('class', type, cls)
-      self._parseClass = false
+      self.push(line)
     }
-
-    self.push(line)
   })
 
   done()

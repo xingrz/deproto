@@ -5,6 +5,12 @@ var _ = require('lodash')
   , fs = require('fs')
   , async = require('async')
 
+var klass = require('./parsers/class')
+  , field = require('./parsers/field')
+  , method = require('./parsers/method')
+  , statementMicro = require('./parsers/statement-micro')
+  , statementNano = require('./parsers/statement-nano')
+
 var sourceDir = process.argv.length >= 3
               ? pt.resolve(process.argv[2])
               : pt.resolve('.')
@@ -25,7 +31,7 @@ var destinationDir = process.argv.length >= 4
 
     async.map(entities, fs.stat, function (err, stats) {
       if (err) {
-        return done(err)
+        return done()
       }
 
       var subdirs = entities.filter(function (path, i) {
@@ -36,7 +42,7 @@ var destinationDir = process.argv.length >= 4
         return stats[i].isFile() && '.smali' == pt.extname(path)
       })
 
-      findMessage(dir, files, function (err) {
+      buildTree(dir, files, function (err) {
         if (err) {
           return done(err)
         }
@@ -53,15 +59,13 @@ var destinationDir = process.argv.length >= 4
   }
 })
 
-function findMessage (dir, files, done) {
-  if (files.length < 2) {
-    return done()
-  }
-
+function buildTree (dir, files, done) {
   var tree = {}
 
   files.forEach(function (path) {
-    tree[pt.basename(path, '.smali')] = {}
+    tree[pt.basename(path, '.smali')] = {
+      members: {}
+    }
   })
 
   _.forIn(tree, function (value, key) {
@@ -69,7 +73,7 @@ function findMessage (dir, files, done) {
       _.forIn(tree, function (value, subkey) {
         if (subkey.indexOf(key + '$') == 0) {
           if (!subkey.match(/\$[\d]+$/)) {
-            tree[key][subkey] = tree[subkey]
+            tree[key].members[subkey] = tree[subkey]
           }
           delete tree[subkey]
         }
@@ -78,7 +82,7 @@ function findMessage (dir, files, done) {
   })
 
   _.forIn(tree, function (value, key) {
-    if (_.keys(tree[key]).length == 0) {
+    if (_.keys(tree[key].members).length == 0) {
       delete tree[key]
     }
   })
@@ -87,12 +91,45 @@ function findMessage (dir, files, done) {
     return done()
   }
 
-  console.log(dir)
-  console.log(tree)
+  walkTree(dir, tree, done)
+}
 
-  /*if (classTree.length > 0) {
-    console.log('* %s', pt.relative(sourceDir, dir).replace(/\//g, '.'))
-  }*/
+function walkTree (dir, tree, done) {
+  async.eachSeries(_.keys(tree), function (key, next) {
+    console.log('* ' + pt.relative(sourceDir, dir).replace(/\//g, '.'), key)
+    walkClass(dir, tree[key], key, next)
+  }, done)
+}
 
-  done()
+function walkClass (dir, subtree, key, done) {
+  async.eachSeries(_.keys(subtree.members), function (subkey, next) {
+    fs.createReadStream(pt.join(dir, subkey + '.smali'))
+    .pipe(klass(function (superClass) {
+      switch (superClass) {
+        case 'com.google.protobuf.nano.MessageMicro':
+          console.log('  + ' + superClass + ' ' + subkey)
+
+          if (_.keys(subtree.members[subkey].members).length > 0) {
+            walkClass(dir, subtree.members[subkey], key, next)
+          } else {
+            next()
+          }
+          return
+        case 'com.google.protobuf.nano.MessageNano':
+          console.log('  + ' + superClass + ' ' + subkey)
+
+          if (_.keys(subtree.members[subkey].members).length > 0) {
+            walkClass(dir, subtree.members[subkey], key, next)
+          } else {
+            next()
+          }
+          return
+        case 'java.lang.Object':
+          // ...
+          return next()
+        default:
+          return next()
+      }
+    }))
+  }, done)
 }
